@@ -1,0 +1,167 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 4%;
+    --foreground: 0 0% 98%;
+
+    --card: 0 0% 6.7%;
+    --card-foreground: 0 0% 98%;
+
+    --popover: 0 0% 10.2%;
+    --popover-foreground: 0 0% 98%;
+
+    --primary: 38 92% 50%;
+    --primary-foreground: 0 0% 0%;
+
+    --secondary: 0 0% 10.2%;
+    --secondary-foreground: 0 0% 98%;
+
+    --muted: 0 0% 16.5%;
+    --muted-foreground: 0 0% 64%;
+
+    --accent: 38 92% 50%;
+    --accent-foreground: 0 0% 0%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+
+    --success: 160 84% 39%;
+    --success-foreground: 0 0% 98%;
+
+    --info: 217 91% 60%;
+    --info-foreground: 0 0% 98%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 0%;
+
+    --border: 0 0% 16.5%;
+    --input: 0 0% 16.5%;
+    --ring: 38 92% 50%;
+
+    --radius: 0.75rem;
+
+    --sidebar-background: 0 0% 4%;
+    --sidebar-foreground: 0 0% 64%;
+    --sidebar-primary: 38 92% 50%;
+    --sidebar-primary-foreground: 0 0% 0%;
+    --sidebar-accent: 0 0% 10.2%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 0 0% 16.5%;
+    --sidebar-ring: 38 92% 50%;
+
+    --bg-base: 0 0% 4%;
+    --bg-surface: 0 0% 6.7%;
+    --bg-elevated: 0 0% 10.2%;
+    --accent-dim: 28 82% 26%;
+    --text-primary: 0 0% 98%;
+    --text-secondary: 0 0% 64%;
+    --text-muted: 0 0% 32%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* Tabular numbers for data */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer utilities {
+  /* Grid pattern overlay */
+  .grid-pattern {
+    background-image: 
+      linear-gradient(hsl(0 0% 10.2% / 0.5) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(0 0% 10.2% / 0.5) 1px, transparent 1px);
+    background-size: 60px 60px;
+  }
+
+  /* Pulse animation for low stock */
+  @keyframes pulse-badge {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+  .animate-pulse-badge {
+    animation: pulse-badge 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  /* Page enter animation */
+  @keyframes page-enter {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .animate-page-enter {
+    animation: page-enter 0.3s ease-out;
+  }
+
+  /* Slide in from top */
+  @keyframes slide-in-top {
+    from { opacity: 0; transform: translateY(-12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .animate-slide-in-top {
+    animation: slide-in-top 0.3s ease-out;
+  }
+
+  /* Modal enter */
+  @keyframes modal-enter {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  .animate-modal-enter {
+    animation: modal-enter 0.2s ease-out;
+  }
+
+  /* Shimmer skeleton */
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+  .animate-shimmer {
+    background: linear-gradient(90deg, hsl(0 0% 10.2%) 25%, hsl(0 0% 14%) 50%, hsl(0 0% 10.2%) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+  }
+
+  /* Card hover */
+  .card-hover {
+    @apply transition-transform duration-150 ease-out;
+  }
+  .card-hover:hover {
+    transform: scale(1.01);
+  }
+
+  /* Count up animation helper */
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .animate-fade-up {
+    animation: fade-up 0.5s ease-out;
+  }
+
+  /* Scrollbar styling */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: hsl(0 0% 16.5%);
+    border-radius: 3px;
+  }
+}
