@@ -4,6 +4,7 @@ import { useApp } from '@/context/AppContext';
 import { isLowStock, generateId } from '@/lib/helpers';
 import { useImageUpload } from '@/hooks/use-image-upload';
 import { useFyndSync } from '@/hooks/use-fynd-sync';
+import { useFyndCredentials } from '@/hooks/use-fynd-credentials';
 import Badge from '@/components/Badge';
 import EmptyState from '@/components/EmptyState';
 import Modal from '@/components/Modal';
@@ -12,6 +13,7 @@ import ConfirmDialog from '@/components/ConfirmDialog';
 export default function ProductsPage() {
   const { state, dispatch, addToast, isLoading } = useApp();
   const { syncToFynd, isSyncing } = useFyndSync();
+  const { hasCredentials } = useFyndCredentials();
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
@@ -111,20 +113,29 @@ export default function ProductsPage() {
                   <button onClick={() => setEditProduct(product.id)} className="py-2 px-2.5 border border-border rounded-lg text-xs text-muted-foreground hover:text-foreground transition-colors">✎</button>
                   <button onClick={() => setDeleteProduct(product.id)} className="py-2 px-2.5 border border-border rounded-lg text-xs text-destructive hover:bg-destructive/10 transition-colors">✕</button>
                 </div>
-                <button
-                  onClick={async () => {
-                    try {
-                      await syncToFynd(product.id);
-                      addToast('success', `"${product.name}" is syncing to Fynd`);
-                    } catch (e) {
-                      addToast('error', `Sync failed: ${(e as Error).message}`);
-                    }
-                  }}
-                  disabled={isSyncing(product.id)}
-                  className="w-full mt-2 py-2 bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-semibold rounded-lg text-xs hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-1.5"
-                >
-                  {isSyncing(product.id) ? '⏳ Syncing...' : product.fynd_sync_status === 'synced' ? '✓ Synced' : '⚡ Sync to Fynd'}
-                </button>
+                {hasCredentials ? (
+                  <button
+                    onClick={async () => {
+                      try {
+                        await syncToFynd(product.id);
+                        addToast('success', `"${product.name}" is syncing to Fynd`);
+                      } catch (e) {
+                        addToast('error', `Sync failed: ${(e as Error).message}`);
+                      }
+                    }}
+                    disabled={isSyncing(product.id)}
+                    className="w-full mt-2 py-2 bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-semibold rounded-lg text-xs hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-1.5"
+                  >
+                    {isSyncing(product.id) ? '⏳ Syncing...' : product.fynd_sync_status === 'synced' ? '✓ Synced' : '⚡ Sync to Fynd'}
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => navigate('/settings')}
+                    className="w-full mt-2 py-2 border border-dashed border-violet-500/40 text-violet-400 rounded-lg text-xs hover:bg-violet-600/10 transition-colors flex items-center justify-center gap-1.5"
+                  >
+                    🔗 Set up Fynd to sync
+                  </button>
+                )}
               </div>
             );
           })}
@@ -161,20 +172,29 @@ export default function ProductsPage() {
                     <td className="py-3 px-3 text-sm text-muted-foreground">{stats.locations}</td>
                     <td className="py-3 px-3">{stats.hasLowStock ? <Badge type="low" pulse>LOW STOCK</Badge> : <Badge type="healthy">HEALTHY</Badge>}</td>
                     <td className="py-3 px-3">
-                      <button
-                        onClick={async () => {
-                          try {
-                            await syncToFynd(product.id);
-                            addToast('success', `"${product.name}" is syncing to Fynd`);
-                          } catch (e) {
-                            addToast('error', `Sync failed: ${(e as Error).message}`);
-                          }
-                        }}
-                        disabled={isSyncing(product.id)}
-                        className="text-xs px-2.5 py-1.5 rounded-md font-medium bg-violet-600/10 text-violet-400 hover:bg-violet-600/20 transition-colors disabled:opacity-50"
-                      >
-                        {isSyncing(product.id) ? '⏳' : product.fynd_sync_status === 'synced' ? '✓ Synced' : '⚡ Sync'}
-                      </button>
+                      {hasCredentials ? (
+                        <button
+                          onClick={async () => {
+                            try {
+                              await syncToFynd(product.id);
+                              addToast('success', `"${product.name}" is syncing to Fynd`);
+                            } catch (e) {
+                              addToast('error', `Sync failed: ${(e as Error).message}`);
+                            }
+                          }}
+                          disabled={isSyncing(product.id)}
+                          className="text-xs px-2.5 py-1.5 rounded-md font-medium bg-violet-600/10 text-violet-400 hover:bg-violet-600/20 transition-colors disabled:opacity-50"
+                        >
+                          {isSyncing(product.id) ? '⏳' : product.fynd_sync_status === 'synced' ? '✓ Synced' : '⚡ Sync'}
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => navigate('/settings')}
+                          className="text-xs px-2.5 py-1.5 rounded-md font-medium border border-dashed border-violet-500/40 text-violet-400 hover:bg-violet-600/10"
+                        >
+                          Set up
+                        </button>
+                      )}
                     </td>
                     <td className="py-3 px-3 flex gap-2">
                       <button onClick={() => setEditProduct(product.id)} className="text-xs px-2.5 py-1.5 border border-border rounded-md text-muted-foreground hover:text-foreground transition-colors">Edit</button>
