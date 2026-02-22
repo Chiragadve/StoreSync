@@ -15,6 +15,8 @@ const PRODUCTS_QUERY = `
           threshold
           isActive: is_active
           image_url
+          fynd_sync_status
+          fynd_synced_at
         }
       }
     }
@@ -55,6 +57,8 @@ type ProductRow = {
   threshold: number;
   isActive: boolean;
   image_url?: string | null;
+  fynd_sync_status?: string | null;
+  fynd_synced_at?: string | null;
 };
 
 type ProductCollectionResponse = {
@@ -72,6 +76,8 @@ function toProduct(row: ProductRow): Product {
     threshold: row.threshold ?? 20,
     isActive: row.isActive ?? true,
     image_url: row.image_url ?? null,
+    fynd_sync_status: row.fynd_sync_status ?? 'not_synced',
+    fynd_synced_at: row.fynd_synced_at ?? null,
   };
 }
 

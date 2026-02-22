@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useApp } from '@/context/AppContext';
 import { isLowStock, generateId } from '@/lib/helpers';
 import { useImageUpload } from '@/hooks/use-image-upload';
+import { useFyndSync } from '@/hooks/use-fynd-sync';
 import Badge from '@/components/Badge';
 import EmptyState from '@/components/EmptyState';
 import Modal from '@/components/Modal';
@@ -10,6 +11,7 @@ import ConfirmDialog from '@/components/ConfirmDialog';
 
 export default function ProductsPage() {
   const { state, dispatch, addToast, isLoading } = useApp();
+  const { syncToFynd, isSyncing } = useFyndSync();
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
@@ -101,11 +103,28 @@ export default function ProductsPage() {
                     <span className="text-foreground">{stats.locations}</span>
                   </div>
                 </div>
-                <div className="flex gap-2 mt-4">
+                <div className="mt-3">
+                  <FyndSyncBadge status={product.fynd_sync_status} syncedAt={product.fynd_synced_at} />
+                </div>
+                <div className="flex gap-2 mt-3">
                   <button onClick={() => navigate(`/inventory?product=${product.id}`)} className="flex-1 py-2 border border-border rounded-lg text-xs text-muted-foreground hover:text-foreground transition-colors">View Stock</button>
                   <button onClick={() => setEditProduct(product.id)} className="py-2 px-2.5 border border-border rounded-lg text-xs text-muted-foreground hover:text-foreground transition-colors">✎</button>
                   <button onClick={() => setDeleteProduct(product.id)} className="py-2 px-2.5 border border-border rounded-lg text-xs text-destructive hover:bg-destructive/10 transition-colors">✕</button>
                 </div>
+                <button
+                  onClick={async () => {
+                    try {
+                      await syncToFynd(product.id);
+                      addToast('success', `"${product.name}" is syncing to Fynd`);
+                    } catch (e) {
+                      addToast('error', `Sync failed: ${(e as Error).message}`);
+                    }
+                  }}
+                  disabled={isSyncing(product.id)}
+                  className="w-full mt-2 py-2 bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-semibold rounded-lg text-xs hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-1.5"
+                >
+                  {isSyncing(product.id) ? '⏳ Syncing...' : product.fynd_sync_status === 'synced' ? '✓ Synced' : '⚡ Sync to Fynd'}
+                </button>
               </div>
             );
           })}
@@ -115,7 +134,7 @@ export default function ProductsPage() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-border">
-                {['', 'Product', 'SKU', 'Category', 'Threshold', 'Total Stock', 'Locations', 'Status', 'Actions'].map((h) => (
+                {['', 'Product', 'SKU', 'Category', 'Threshold', 'Total Stock', 'Locations', 'Status', 'Fynd', 'Actions'].map((h) => (
                   <th key={h} className="text-left py-3 px-3 text-xs text-muted-foreground uppercase tracking-wider font-mono">{h}</th>
                 ))}
               </tr>
@@ -141,6 +160,22 @@ export default function ProductsPage() {
                     <td className="py-3 px-3 font-mono font-bold tabular-nums text-foreground">{stats.totalStock}</td>
                     <td className="py-3 px-3 text-sm text-muted-foreground">{stats.locations}</td>
                     <td className="py-3 px-3">{stats.hasLowStock ? <Badge type="low" pulse>LOW STOCK</Badge> : <Badge type="healthy">HEALTHY</Badge>}</td>
+                    <td className="py-3 px-3">
+                      <button
+                        onClick={async () => {
+                          try {
+                            await syncToFynd(product.id);
+                            addToast('success', `"${product.name}" is syncing to Fynd`);
+                          } catch (e) {
+                            addToast('error', `Sync failed: ${(e as Error).message}`);
+                          }
+                        }}
+                        disabled={isSyncing(product.id)}
+                        className="text-xs px-2.5 py-1.5 rounded-md font-medium bg-violet-600/10 text-violet-400 hover:bg-violet-600/20 transition-colors disabled:opacity-50"
+                      >
+                        {isSyncing(product.id) ? '⏳' : product.fynd_sync_status === 'synced' ? '✓ Synced' : '⚡ Sync'}
+                      </button>
+                    </td>
                     <td className="py-3 px-3 flex gap-2">
                       <button onClick={() => setEditProduct(product.id)} className="text-xs px-2.5 py-1.5 border border-border rounded-md text-muted-foreground hover:text-foreground transition-colors">Edit</button>
                       <button onClick={() => setDeleteProduct(product.id)} className="text-xs px-2.5 py-1.5 border border-border rounded-md text-destructive hover:bg-destructive/10 transition-colors">Delete</button>
@@ -167,6 +202,32 @@ export default function ProductsPage() {
         title="Delete Product"
         message="This will permanently remove the product and all its inventory data. Are you sure?"
       />
+    </div>
+  );
+}
+
+function FyndSyncBadge({ status, syncedAt }: { status?: string | null; syncedAt?: string | null }) {
+  const s = status ?? 'not_synced';
+  const styles: Record<string, string> = {
+    not_synced: 'bg-secondary text-muted-foreground',
+    syncing: 'bg-amber-500/15 text-amber-400 animate-pulse',
+    synced: 'bg-emerald-500/15 text-emerald-400',
+    error: 'bg-destructive/15 text-destructive',
+  };
+  const labels: Record<string, string> = {
+    not_synced: 'Not Synced',
+    syncing: 'Syncing…',
+    synced: '✓ Synced to Fynd',
+    error: '✕ Sync Error',
+  };
+  return (
+    <div className="flex items-center gap-2">
+      <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider ${styles[s] ?? styles.not_synced}`}>
+        {labels[s] ?? labels.not_synced}
+      </span>
+      {syncedAt && s === 'synced' && (
+        <span className="text-[10px] text-muted-foreground">{new Date(syncedAt).toLocaleDateString()}</span>
+      )}
     </div>
   );
 }

@@ -14,6 +14,8 @@ export interface Product {
   threshold: number;
   isActive: boolean;
   image_url?: string | null;
+  fynd_sync_status?: string | null;
+  fynd_synced_at?: string | null;
 }
 
 export interface InventoryItem {
