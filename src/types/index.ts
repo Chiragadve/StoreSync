@@ -13,6 +13,7 @@ export interface Product {
   category: string;
   threshold: number;
   isActive: boolean;
+  image_url?: string | null;
 }
 
 export interface InventoryItem {

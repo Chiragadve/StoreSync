@@ -224,6 +224,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               sku: action.product.sku,
               category: action.product.category,
               threshold: action.product.threshold,
+              image_url: action.product.image_url ?? null,
             },
             {
               onError: (error) => notifyMutationError(error, 'Failed to add product.'),
@@ -236,6 +237,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             {
               ...action.product,
               isActive: action.product.isActive ?? true,
+              image_url: action.product.image_url ?? null,
             },
             {
               onError: (error) => notifyMutationError(error, 'Failed to update product.'),
@@ -343,11 +345,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const isDataLoading = isAuthenticated
     ? productsQuery.isPending ||
-      locationsQuery.isPending ||
-      inventoryQuery.isPending ||
-      ordersQuery.isPending ||
-      profileQuery.isPending ||
-      settingsQuery.isPending
+    locationsQuery.isPending ||
+    inventoryQuery.isPending ||
+    ordersQuery.isPending ||
+    profileQuery.isPending ||
+    settingsQuery.isPending
     : false;
 
   const value = useMemo(

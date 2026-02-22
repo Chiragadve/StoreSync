@@ -1,7 +1,8 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef, type DragEvent, type ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '@/context/AppContext';
 import { isLowStock, generateId } from '@/lib/helpers';
+import { useImageUpload } from '@/hooks/use-image-upload';
 import Badge from '@/components/Badge';
 import EmptyState from '@/components/EmptyState';
 import Modal from '@/components/Modal';
@@ -73,6 +74,13 @@ export default function ProductsPage() {
             const stats = getProductStats(product.id);
             return (
               <div key={product.id} className="bg-card border border-border rounded-xl p-5 card-hover">
+                <div className="w-full h-32 rounded-lg bg-secondary mb-3 overflow-hidden">
+                  {product.image_url ? (
+                    <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-2xl text-muted-foreground">📦</div>
+                  )}
+                </div>
                 <div className="flex items-start justify-between mb-2">
                   <h3 className="font-semibold text-foreground text-sm">{product.name}</h3>
                   {stats.hasLowStock && <Badge type="low" pulse>LOW</Badge>}
@@ -107,7 +115,7 @@ export default function ProductsPage() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-border">
-                {['Product', 'SKU', 'Category', 'Threshold', 'Total Stock', 'Locations', 'Status', 'Actions'].map((h) => (
+                {['', 'Product', 'SKU', 'Category', 'Threshold', 'Total Stock', 'Locations', 'Status', 'Actions'].map((h) => (
                   <th key={h} className="text-left py-3 px-3 text-xs text-muted-foreground uppercase tracking-wider font-mono">{h}</th>
                 ))}
               </tr>
@@ -117,6 +125,15 @@ export default function ProductsPage() {
                 const stats = getProductStats(product.id);
                 return (
                   <tr key={product.id} className="border-b border-border/50 hover:bg-secondary/30 transition-colors">
+                    <td className="py-3 px-3">
+                      <div className="w-8 h-8 rounded bg-secondary overflow-hidden">
+                        {product.image_url ? (
+                          <img src={product.image_url} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="w-full h-full flex items-center justify-center text-xs">📦</span>
+                        )}
+                      </div>
+                    </td>
                     <td className="py-3 px-3 text-sm text-foreground font-medium">{product.name}</td>
                     <td className="py-3 px-3 font-mono text-xs text-muted-foreground">{product.sku}</td>
                     <td className="py-3 px-3"><Badge type="category">{product.category}</Badge></td>
@@ -162,7 +179,13 @@ function ProductModal({ open, onClose, productId }: { open: boolean; onClose: ()
   const [selectedCategory, setSelectedCategory] = useState('');
   const [customCategory, setCustomCategory] = useState('');
   const [threshold, setThreshold] = useState('20');
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { uploadImage, deleteImage, isUploading } = useImageUpload();
   const categories = [...new Set(state.products.map((p) => p.category))].filter((c) => c && c !== '__new');
   const isCustomCategory = selectedCategory === '__new';
 
@@ -174,10 +197,46 @@ function ProductModal({ open, onClose, productId }: { open: boolean; onClose: ()
     setSelectedCategory(existing?.category === '__new' ? '' : (existing?.category ?? ''));
     setCustomCategory('');
     setThreshold(`${existing?.threshold ?? 20}`);
+    setImageUrl(existing?.image_url ?? null);
+    setImageFile(null);
+    setImagePreview(existing?.image_url ?? null);
+    setIsSubmitting(false);
     setErrors([]);
-  }, [open, existing?.id, existing?.name, existing?.sku, existing?.category, existing?.threshold]);
+  }, [open, existing?.id, existing?.name, existing?.sku, existing?.category, existing?.threshold, existing?.image_url]);
 
-  const handleSubmit = () => {
+  const handleFileSelect = (file: File) => {
+    const allowed = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!allowed.includes(file.type)) {
+      addToast('error', 'Only JPG, PNG, and WebP images are allowed.');
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      addToast('error', 'Image must be 2 MB or smaller.');
+      return;
+    }
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+  };
+
+  const handleDrop = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files?.[0];
+    if (file) handleFileSelect(file);
+  };
+
+  const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) handleFileSelect(file);
+  };
+
+  const removeImage = () => {
+    setImageFile(null);
+    setImagePreview(null);
+    setImageUrl(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleSubmit = async () => {
     const resolvedCategory = isCustomCategory ? customCategory.trim() : selectedCategory.trim();
     const parsedThreshold = Number(threshold.trim());
     const resolvedThreshold = threshold.trim() === '' || !Number.isFinite(parsedThreshold) ? 20 : parsedThreshold;
@@ -189,27 +248,47 @@ function ProductModal({ open, onClose, productId }: { open: boolean; onClose: ()
     setErrors(errs);
     if (errs.length) return;
 
-    if (existing) {
-      dispatch({
-        type: 'UPDATE_PRODUCT',
-        product: { ...existing, name, sku, category: resolvedCategory, threshold: resolvedThreshold },
-      });
-      addToast('success', 'Product updated');
-    } else {
-      dispatch({
-        type: 'ADD_PRODUCT',
-        product: {
-          id: generateId('p'),
-          name,
-          sku,
-          category: resolvedCategory,
-          threshold: resolvedThreshold,
-          isActive: true,
-        },
-      });
-      addToast('success', 'Product added');
+    setIsSubmitting(true);
+    try {
+      let finalImageUrl = imageUrl;
+
+      if (imageFile) {
+        if (existing?.image_url) {
+          await deleteImage(existing.image_url);
+        }
+        finalImageUrl = await uploadImage(imageFile);
+      } else if (!imagePreview && existing?.image_url) {
+        await deleteImage(existing.image_url);
+        finalImageUrl = null;
+      }
+
+      if (existing) {
+        dispatch({
+          type: 'UPDATE_PRODUCT',
+          product: { ...existing, name, sku, category: resolvedCategory, threshold: resolvedThreshold, image_url: finalImageUrl },
+        });
+        addToast('success', 'Product updated');
+      } else {
+        dispatch({
+          type: 'ADD_PRODUCT',
+          product: {
+            id: generateId('p'),
+            name,
+            sku,
+            category: resolvedCategory,
+            threshold: resolvedThreshold,
+            isActive: true,
+            image_url: finalImageUrl,
+          },
+        });
+        addToast('success', 'Product added');
+      }
+      onClose();
+    } catch {
+      addToast('error', 'Failed to upload image.');
+    } finally {
+      setIsSubmitting(false);
     }
-    onClose();
   };
 
   return (
@@ -258,9 +337,50 @@ function ProductModal({ open, onClose, productId }: { open: boolean; onClose: ()
             placeholder="20"
           />
         </div>
+
+        {/* Image upload */}
+        <div>
+          <label className="block text-xs text-muted-foreground mb-1">Image <span className="text-muted-foreground/60">(optional)</span></label>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            onChange={handleInputChange}
+            className="hidden"
+          />
+          {imagePreview ? (
+            <div className="relative w-full h-36 rounded-lg overflow-hidden border border-border bg-secondary">
+              <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
+              <button
+                onClick={removeImage}
+                className="absolute top-2 right-2 w-6 h-6 rounded-full bg-background/80 backdrop-blur-sm border border-border flex items-center justify-center text-xs text-destructive hover:bg-destructive/10 transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+          ) : (
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={handleDrop}
+              className="w-full h-28 rounded-lg border-2 border-dashed border-border hover:border-primary/50 bg-elevated/50 flex flex-col items-center justify-center gap-1.5 cursor-pointer transition-colors"
+            >
+              <span className="text-xl">📷</span>
+              <span className="text-xs text-muted-foreground">Click or drop image here</span>
+              <span className="text-[10px] text-muted-foreground/60">JPG, PNG, WebP · Max 2 MB</span>
+            </div>
+          )}
+        </div>
+
         <div className="flex gap-3 pt-2">
           <button onClick={onClose} className="flex-1 px-4 py-2.5 border border-border rounded-lg text-muted-foreground hover:text-foreground transition-colors">Cancel</button>
-          <button onClick={handleSubmit} className="flex-1 px-4 py-2.5 bg-primary text-primary-foreground font-semibold rounded-lg hover:opacity-90 transition-opacity">{existing ? 'Save' : 'Add'}</button>
+          <button
+            onClick={handleSubmit}
+            disabled={isSubmitting || isUploading}
+            className="flex-1 px-4 py-2.5 bg-primary text-primary-foreground font-semibold rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
+          >
+            {isSubmitting || isUploading ? 'Saving...' : existing ? 'Save' : 'Add'}
+          </button>
         </div>
       </div>
     </Modal>

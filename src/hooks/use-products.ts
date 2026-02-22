@@ -14,6 +14,7 @@ const PRODUCTS_QUERY = `
           category
           threshold
           isActive: is_active
+          image_url
         }
       }
     }
@@ -21,9 +22,9 @@ const PRODUCTS_QUERY = `
 `;
 
 const INSERT_PRODUCT_MUTATION = `
-  mutation InsertProduct($name: String!, $sku: String!, $category: String!, $threshold: Int!, $isActive: Boolean!) {
+  mutation InsertProduct($name: String!, $sku: String!, $category: String!, $threshold: Int!, $isActive: Boolean!, $imageUrl: String) {
     insertIntoproductsCollection(
-      objects: [{ name: $name, sku: $sku, category: $category, threshold: $threshold, is_active: $isActive }]
+      objects: [{ name: $name, sku: $sku, category: $category, threshold: $threshold, is_active: $isActive, image_url: $imageUrl }]
     ) {
       records {
         id
@@ -33,9 +34,9 @@ const INSERT_PRODUCT_MUTATION = `
 `;
 
 const UPDATE_PRODUCT_MUTATION = `
-  mutation UpdateProduct($id: UUID!, $name: String!, $sku: String!, $category: String!, $threshold: Int!, $isActive: Boolean!) {
+  mutation UpdateProduct($id: UUID!, $name: String!, $sku: String!, $category: String!, $threshold: Int!, $isActive: Boolean!, $imageUrl: String) {
     updateproductsCollection(
-      set: { name: $name, sku: $sku, category: $category, threshold: $threshold, is_active: $isActive }
+      set: { name: $name, sku: $sku, category: $category, threshold: $threshold, is_active: $isActive, image_url: $imageUrl }
       filter: { id: { eq: $id } }
       atMost: 1
     ) {
@@ -53,6 +54,7 @@ type ProductRow = {
   category: string;
   threshold: number;
   isActive: boolean;
+  image_url?: string | null;
 };
 
 type ProductCollectionResponse = {
@@ -69,6 +71,7 @@ function toProduct(row: ProductRow): Product {
     category: row.category,
     threshold: row.threshold ?? 20,
     isActive: row.isActive ?? true,
+    image_url: row.image_url ?? null,
   };
 }
 
@@ -91,13 +94,14 @@ export function useAddProductMutation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (product: Pick<Product, 'name' | 'sku' | 'category' | 'threshold'>) => {
+    mutationFn: async (product: Pick<Product, 'name' | 'sku' | 'category' | 'threshold'> & { image_url?: string | null }) => {
       await graphqlRequest(INSERT_PRODUCT_MUTATION, {
         name: product.name,
         sku: product.sku,
         category: product.category,
         threshold: product.threshold,
         isActive: true,
+        imageUrl: product.image_url ?? null,
       });
     },
     onSuccess: () => {
@@ -118,6 +122,7 @@ export function useUpdateProductMutation() {
         category: product.category,
         threshold: product.threshold,
         isActive: product.isActive ?? true,
+        imageUrl: product.image_url ?? null,
       });
     },
     onSuccess: () => {
